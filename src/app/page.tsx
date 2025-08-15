@@ -1,75 +1,49 @@
 'use client';
 
-import { GrazProvider, useAccount, useConnect, useDisconnect, useCosmWasmClient } from 'graz';
+import { GrazProvider, useAccount, useConnect, useDisconnect, useBalance } from 'graz';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ChainInfo } from "@keplr-wallet/types";
-import { useEffect, useState } from 'react';
 
 const queryClient = new QueryClient();
 
-// Your PropMint Token Contract Address on Andromeda Testnet
-const CW20_CONTRACT_ADDRESS = "andr1rmca39jx8dnqh2j26fachgkhzvh2c6r6lmppsj9a2a35p89e2jussakzfw";
-
-// The stable Andromeda Testnet configuration
-const andromedaTestnet: ChainInfo = {
-    chainId: "galileo-3",
-    chainName: "Andromeda Testnet",
-    rpc: "https://andromeda-testnet-rpc.polkachu.com/",
-    rest: "https://andromeda-testnet-rest.polkachu.com/",
+const junoTestnet: ChainInfo = {
+    chainId: "uni-6",
+    chainName: "Juno Testnet",
+    rpc: "https://rpc.uni.junonetwork.io",
+    rest: "https://rest.uni.junonetwork.io",
     bip44: { coinType: 118 },
     bech32Config: {
-        bech32PrefixAccAddr: "andr",
-        bech32PrefixAccPub: "andrpub",
-        bech32PrefixValAddr: "andrvaloper",
-        bech32PrefixValPub: "andrvaloperpub",
-        bech32PrefixConsAddr: "andrvalcons",
-        bech32PrefixConsPub: "andrvalconspub",
+        bech32PrefixAccAddr: "juno",
+        bech32PrefixAccPub: "junopub",
+        bech32PrefixValAddr: "junovaloper",
+        bech32PrefixValPub: "junovaloperpub",
+        bech32PrefixConsAddr: "junovalcons",
+        bech32PrefixConsPub: "junovalconspub",
     },
-    currencies: [{ coinDenom: "ANDR", coinMinimalDenom: "uandr", coinDecimals: 6 }],
-    feeCurrencies: [{ coinDenom: "ANDR", coinMinimalDenom: "uandr", coinDecimals: 6 }],
-    stakeCurrency: { coinDenom: "ANDR", coinMinimalDenom: "uandr", coinDecimals: 6 },
+    currencies: [{ coinDenom: "JUNOX", coinMinimalDenom: "ujunox", coinDecimals: 6 }],
+    feeCurrencies: [{ coinDenom: "JUNOX", coinMinimalDenom: "ujunox", coinDecimals: 6 }],
+    stakeCurrency: { coinDenom: "JUNOX", coinMinimalDenom: "ujunox", coinDecimals: 6 },
 };
 
 function WalletConnect() {
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
-  const { data: account, isConnected } = useAccount({ chainId: "galileo-3" });
-  const [balance, setBalance] = useState<string | null>(null);
-  const { data: client } = useCosmWasmClient();
+  const { data: account, isConnected } = useAccount({ chainId: "uni-6" });
 
-  useEffect(() => {
-    const fetchBalance = async () => {
-      // Reset balance on disconnect
-      if (!isConnected) {
-        setBalance(null);
-        return;
-      }
-
-      if (client && account?.bech32Address) {
-        try {
-          const result = await client.queryContractSmart(CW20_CONTRACT_ADDRESS, {
-            balance: { address: account.bech32Address },
-          });
-          const formattedBalance = (Number(result.balance) / 1_000_000).toLocaleString();
-          setBalance(formattedBalance);
-        } catch (error) {
-          console.error("Failed to fetch balance:", error);
-          setBalance("Error fetching balance");
-        }
-      }
-    };
-    fetchBalance();
-  }, [client, account, isConnected]);
+  // A simpler hook from graz to get the native token balance
+  const { data: balance, isLoading } = useBalance({
+    denom: "ujunox",
+    bech32Address: account?.bech32Address,
+  });
 
   const handleConnect = async () => {
     try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (!(window as any).keplr) {
-  return alert("Please install the Keplr wallet extension.");
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-await (window as any).keplr.experimentalSuggestChain(andromedaTestnet);
-      connect({ chainId: "galileo-3" });
+      if (!(window as any).keplr) {
+        return alert("Please install the Keplr wallet extension.");
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (window as any).keplr.experimentalSuggestChain(junoTestnet);
+      connect({ chainId: "uni-6" });
     } catch (error) {
       alert(`Error connecting wallet: ${(error as Error).message}`);
     }
@@ -78,8 +52,9 @@ await (window as any).keplr.experimentalSuggestChain(andromedaTestnet);
   if (isConnected) {
     return (
       <div>
-        <p>Connected Address: {account?.bech32Address}</p>
-        {balance !== null && <p><strong>Your PMT Balance: {balance}</strong></p>}
+        <p>Connected Juno Address: {account?.bech32Address}</p>
+        {isLoading && <p>Fetching balance...</p>}
+        {balance && <p><strong>Your JUNOX Balance: {(Number(balance.amount) / 1_000_000).toLocaleString()}</strong></p>}
         <button onClick={() => disconnect()}>Disconnect Wallet</button>
       </div>
     );
@@ -91,10 +66,10 @@ await (window as any).keplr.experimentalSuggestChain(andromedaTestnet);
 export default function Home() {
   return (
     <QueryClientProvider client={queryClient}>
-      <GrazProvider grazOptions={{ chains: [andromedaTestnet] }}>
+      <GrazProvider grazOptions={{ chains: [junoTestnet] }}>
         <main style={{ fontFamily: 'sans-serif', padding: '2rem' }}>
           <h1>Welcome to PropMint AI</h1>
-          <p>Please connect your wallet to continue.</p>
+          <p>Please connect your wallet to the Juno Testnet.</p>
           <WalletConnect />
         </main>
       </GrazProvider>
