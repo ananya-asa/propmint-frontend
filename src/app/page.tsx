@@ -39,6 +39,7 @@ function WalletConnect() {
 
   const handleConnect = async () => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (!(window as any).keplr) {
         return alert("Please install the Keplr wallet extension.");
       }
