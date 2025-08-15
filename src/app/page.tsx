@@ -9,8 +9,8 @@ const queryClient = new QueryClient();
 const junoTestnet: ChainInfo = {
     chainId: "uni-6",
     chainName: "Juno Testnet",
-    rpc: "https://rpc.uni.junonetwork.io",
-    rest: "https://rest.uni.junonetwork.io",
+    rpc: "/api/proxy",
+    rest: "/api/proxy",
     bip44: { coinType: 118 },
     bech32Config: {
         bech32PrefixAccAddr: "juno",
