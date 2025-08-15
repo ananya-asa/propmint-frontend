@@ -63,10 +63,12 @@ function WalletConnect() {
 
   const handleConnect = async () => {
     try {
-      if (!(window as any).keplr) {
-        return alert("Please install the Keplr wallet extension.");
-      }
-      await (window as any).keplr.experimentalSuggestChain(andromedaTestnet);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (!(window as any).keplr) {
+  return alert("Please install the Keplr wallet extension.");
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+await (window as any).keplr.experimentalSuggestChain(andromedaTestnet);
       connect({ chainId: "galileo-3" });
     } catch (error) {
       alert(`Error connecting wallet: ${(error as Error).message}`);
