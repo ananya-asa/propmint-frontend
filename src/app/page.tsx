@@ -32,9 +32,10 @@ function WalletConnect() {
 
   // A simpler hook from graz to get the native token balance
   const { data: balance, isLoading } = useBalance({
-    denom: "ujunox",
-    bech32Address: account?.bech32Address,
-  });
+  denom: "ujunox",
+  bech32Address: account?.bech32Address,
+  chainId: "uni-6", // <-- Add this line
+});
 
   const handleConnect = async () => {
     try {
