@@ -13,12 +13,23 @@ const RPC_URL = "https://api.andromedaprotocol.io/rpc/testnet";
 const CHAIN_ID = "galileo-4";
 const DENOM = "uandr";
 const DISPLAY_DENOM = "ANDR";
-const PROPMINT_MAIN_CONTRACT = "andr1t6zcfvnr7vwp2dyecgentu649jcaqh6rscp0088275vjr6hygcqsjaz4mq";
+
 const CW721_PROPERTY_CONTRACT = "andr1mglayf6ncyvawz5x8n0nnv3z7nwv5gw9gs5anzww4tgcckjsg78s35dfj9";
 const CW20_FRACTIONAL_TOKEN = "andr1rmca39jx8dnqh2j26fachgkhzvh2c6r6lmppsj9a2a35p89e2jussakzfw";
 const CW20_EXCHANGE_CONTRACT = "andr1qh9jq0jk835gguu0x4cqxk20pe7z8jcwqerfljjuf5ly99gkeazsph5rnq";
 const CW20_STAKING_CONTRACT = "andr1gk2zfc5xunhs9980ul8vs3xtlcf787yf3ra6ntv4ac8w2rrj06vsaqm43e";
 const TOKEN_ID = "VILLA123";
+
+type TxRecord = { action: string; amount: string; tx: string };
+type NftAttribute = { trait_type: string; value: string };
+type NftInfo = {
+  extension?: {
+    name?: string;
+    description?: string;
+    attributes?: NftAttribute[];
+  };
+  token_uri?: string;
+};
 
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string>("");
@@ -44,8 +55,8 @@ export default function Home() {
   const [stakeAmount, setStakeAmount] = useState<string>("1");
   const [unstakeAmount, setUnstakeAmount] = useState<string>("1");
   const [sellAmount, setSellAmount] = useState<string>("1");
-  const [txHistory, setTxHistory] = useState<any[]>([]);
-  const [nftInfo, setNftInfo] = useState<any>(null);
+  const [txHistory, setTxHistory] = useState<TxRecord[]>([]);
+  const [nftInfo, setNftInfo] = useState<NftInfo | null>(null);
   const [propertyImage, setPropertyImage] = useState<string>("/default-property.png");
   const [maxPurchasable, setMaxPurchasable] = useState<number>(0);
 
@@ -73,9 +84,8 @@ export default function Home() {
     (async () => {
       try {
         cwClient.current = await CosmWasmClient.connect(RPC_URL);
-        const nft = await cwClient.current.queryContractSmart(
-          CW721_PROPERTY_CONTRACT,
-          { nft_info: { token_id: TOKEN_ID } }
+        const nft: NftInfo = await cwClient.current.queryContractSmart(
+          CW721_PROPERTY_CONTRACT, { nft_info: { token_id: TOKEN_ID } }
         );
         let imageUrl = "/default-property.png";
         if (nft.token_uri) {
@@ -83,7 +93,7 @@ export default function Home() {
             const res = await fetch(nft.token_uri);
             const meta = await res.json();
             if (meta.image) imageUrl = meta.image;
-          } catch {}
+          } catch { }
         }
         setNftInfo(nft);
         setPropertyImage(imageUrl);
@@ -104,21 +114,15 @@ export default function Home() {
 
       const client = cwClient.current!;
       const [fQ, staker] = await Promise.all([
-        client.queryContractSmart(CW20_FRACTIONAL_TOKEN, {
-          balance: { address: walletAddress }
-        }),
-        client.queryContractSmart(CW20_STAKING_CONTRACT, {
-          staker: { address: walletAddress }
-        })
+        client.queryContractSmart(CW20_FRACTIONAL_TOKEN, { balance: { address: walletAddress } }),
+        client.queryContractSmart(CW20_STAKING_CONTRACT, { staker: { address: walletAddress } })
       ]);
 
-      const fractional = Number(fQ.balance) / 1_000_000;
-      setFractionalBalance(fractional);
+      setFractionalBalance(Number(fQ.balance) / 1_000_000);
       setStakedBalance(Number(staker.share) / 1_000_000);
 
-      const rewardEntry = staker.pending_rewards.find(
-        ([asset]: [string, string]) => asset === `cw20:${CW20_FRACTIONAL_TOKEN}`
-      ) || [null, "0"];
+      const rewardEntry = (staker.pending_rewards as [string, string][])
+        .find(([asset]) => asset === `cw20:${CW20_FRACTIONAL_TOKEN}`) || [null, "0"];
       setStakingRewards(Number(rewardEntry[1]) / 1_000_000);
 
       const exchangeRate = 1_000_000;
@@ -132,6 +136,7 @@ export default function Home() {
 
   useEffect(() => {
     if (walletAddress) fetchBalances();
+    // eslint-disable-next-line
   }, [walletAddress]);
 
   const connectWallet = async () => {
@@ -368,7 +373,7 @@ export default function Home() {
         const client = await SigningCosmWasmClient.connectWithSigner(RPC_URL, offlineSigner);
         const fee: StdFee = { amount: [{ denom: DENOM, amount: "10000" }], gas: "600000" };
         const res = await client.execute(walletAddress, CW20_FRACTIONAL_TOKEN, sendMsg, fee, `Start sale of ${amount} PMT`);
-        setTxHistory(prev => [{ action: "Start Sale", amount, tx: res.transactionHash }, ...prev]);
+        setTxHistory(prev => [{ action: "Start Sale", amount: sellAmount, tx: res.transactionHash }, ...prev]);
         showStatus(`Sale started! TX: ${res.transactionHash.substring(0, 16)}...`, "success");
         await fetchBalances();
       } catch (error: any) {
@@ -419,7 +424,6 @@ export default function Home() {
       <div className="home-container" role="main">
         <h1 className="animated-title">PropMint AI</h1>
         <p className="subtitle">Fractional Real Estate on Andromeda Protocol</p>
-
         {!walletAddress ? (
           <button className="connect-btn" onClick={connectWallet}>🔗 Connect Keplr Wallet</button>
         ) : (
@@ -435,16 +439,23 @@ export default function Home() {
                 <p><strong>Property Tokens (PMT):</strong> {fractionalBalance.toFixed(4)}</p>
                 <p><strong>Staked Tokens:</strong> {stakedBalance.toFixed(4)}</p>
                 <p><strong>Staking Rewards:</strong> {stakingRewards.toFixed(4)} PMT</p>
-                <p style={{ marginTop: "8px", fontSize: "0.9em", color: "#666" }}>Max purchasable with your ANDR: {maxPurchasable} PMT</p>
+                <p style={{ marginTop: "8px", fontSize: "0.9em", color: "#666" }}>
+                  Max purchasable with your ANDR: {maxPurchasable} PMT
+                </p>
               </div>
             </div>
             {nftInfo && (
               <div className="property-card">
                 <div className="property-title">{nftInfo.extension?.name || "Property NFT"}</div>
-                <img src={propertyImage} alt="Property Image" style={{ width: "100%", borderRadius: 16, marginTop: 12 }} onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/default-property.png"; }} />
+                <img
+                  src={propertyImage}
+                  alt="Property Image"
+                  style={{ width: "100%", borderRadius: 16, marginTop: 12 }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/default-property.png"; }}
+                />
                 <div className="property-details">
                   <p>{nftInfo.extension?.description}</p>
-                  {nftInfo.extension?.attributes?.map((attr: any) => (
+                  {nftInfo.extension?.attributes?.map((attr) => (
                     <p key={attr.trait_type}><strong>{attr.trait_type}:</strong> {attr.value}</p>
                   ))}
                 </div>
