@@ -1,26 +1,536 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  overflow-x: hidden;
+}
+
+/* Main container */
+.home-container {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 28px;
+  padding: 50px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: containerPulse 4s ease-in-out infinite alternate;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated Title */
+.animated-title {
+  font-size: 3.2rem;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 15px;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #f9ca24, #ff9ff3);
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientFlow 4s ease infinite;
+  text-shadow: 0 0 30px rgba(255, 107, 107, 0.3);
+  letter-spacing: -2px;
+}
+
+/* Subtitle */
+.subtitle {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+  font-weight: 300;
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: fadeInUp 1s ease-out 0.5s forwards;
+}
+
+/* Buttons */
+.connect-btn,
+.disconnect-btn,
+.action-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  color: white;
+  padding: 18px 32px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 16px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 20px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.connect-btn::before,
+.disconnect-btn::before,
+.action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.connect-btn:hover::before,
+.disconnect-btn:hover::before,
+.action-btn:hover::before {
+  left: 100%;
+}
+
+.connect-btn:hover,
+.disconnect-btn:hover,
+.action-btn:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.4);
+}
+
+.connect-btn:active,
+.disconnect-btn:active,
+.action-btn:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+.connect-btn:disabled,
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Dashboard container */
+.dashboard {
+  color: white;
+  animation: slideInUp 0.8s ease-out;
+}
+
+/* Wallet info */
+.wallet-info {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Wallet address */
+.wallet-address {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #4ecdc4;
+  margin-top: 5px;
+  word-break: break-all;
+}
+
+/* Property card and balance card */
+.property-card,
+.balance-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 25px;
+  margin: 25px 0;
+  backdrop-filter: blur(15px);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Titles */
+.property-title,
+.balance-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #4ecdc4;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* Property Details and Balance Details */
+.property-details,
+.balance-details {
+  text-align: left;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.property-details p,
+.balance-details p {
+  margin: 8px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.property-details p:last-child,
+.balance-details p:last-child {
+  border-bottom: none;
+}
+
+.property-details strong,
+.balance-details strong {
+  color: #f9ca24;
+}
+
+/* Transaction section */
+.tx-section {
+  display: flex;
+  gap: 15px;
+  margin: 30px 0;
+  align-items: stretch;
+}
+
+.tx-section input[type=number] {
+  flex: 2;
+  padding: 18px 20px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 1.1rem;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.tx-section input[type=number]::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tx-section input[type=number]:focus {
+  outline: none;
+  border-color: #4ecdc4;
+  box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.action-btn {
+  flex: 3;
+  margin-top: 0;
+}
+
+/* Status messages */
+.status {
+  margin-top: 25px;
+  padding: 20px;
+  border-radius: 12px;
+  font-weight: 500;
+  text-align: center;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: statusFadeIn 0.3s ease;
+  font-size: 1rem;
+}
+
+@keyframes statusFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status.success {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(46, 204, 113, 0.1));
+  color: #2ecc71;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.status.error {
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.2), rgba(231, 76, 60, 0.1));
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.status.info {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(52, 152, 219, 0.1));
+  color: #3498db;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+/* Loading spinner */
+.loading-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 3px solid #4ecdc4;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  margin-right: 12px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Transaction History */
+.history-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 25px;
+  margin: 25px 0;
+  backdrop-filter: blur(15px);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.history-card .balance-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #4ecdc4;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.history-card .balance-details p {
+  margin: 10px 0;
+  word-break: break-all;
+}
+
+.history-card a {
+  font-size: 0.8em;
+  color: #4ecdc4;
+  text-decoration: underline;
+}
+
+/* Disconnect button */
+.disconnect-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  color: white;
+  padding: 18px 32px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 16px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 20px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.disconnect-btn:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.4);
+}
+
+.disconnect-btn:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+/* Modal Styles - adapt as needed */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(15px);
+  padding: 30px 40px;
+  border-radius: 20px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+  color: white;
+  text-align: center;
+}
+
+.modal-content p {
+  font-size: 1.1rem;
+  margin-bottom: 25px;
+  font-weight: 600;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.confirm-btn,
+.cancel-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  color: white;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 16px;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.confirm-btn:hover,
+.cancel-btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 14px 28px rgba(102, 126, 234, 0.45);
+}
+
+.confirm-btn:active,
+.cancel-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* Animations */
+@keyframes containerPulse {
+  0% {
+    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  100% {
+    box-shadow: 0 40px 72px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+}
+
+@keyframes gradientFlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Styles for Mobile Devices */
+
+@media (max-width: 768px) {
+  /* Container padding */
+  .home-container {
+    padding: 30px 25px;
+    max-width: 90vw;
+  }
+
+  /* Title size */
+  .animated-title {
+    font-size: 2.5rem;
+  }
+
+  /* Subtitle adjusts */
+  .subtitle {
+    font-size: 1rem;
+    margin-bottom: 30px;
+  }
+
+  /* Make dashboard text slightly smaller */
+  .dashboard {
+    font-size: 0.9rem;
+  }
+
+  /* Wallet info and balance card full width and spacing */
+  .wallet-info,
+  .property-card,
+  .balance-card,
+  .history-card {
+    margin: 20px 0;
+    padding: 20px;
+  }
+
+  /* Property image: responsive width */
+  .property-card img {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+  }
+
+  /* Transaction section stacked vertically */
+  .tx-section {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Inputs & buttons full width */
+  .tx-section input[type=number],
+  .tx-section .action-btn {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-top: 0;
+  }
+
+  /* Button font-size smaller for mobile */
+  .connect-btn,
+  .disconnect-btn,
+  .action-btn {
+    font-size: 1rem;
+    padding: 14px 20px;
+  }
+
+  /* Reduce modal max width */
+  .modal {
+    max-width: 95vw;
+    padding: 20px 25px;
+  }
+
+  /* Modal content font size */
+  .modal-content p {
+    font-size: 1rem;
+  }
+
+  /* Adjust modal buttons */
+  .modal-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .confirm-btn,
+  .cancel-btn {
+    width: 100%;
+    padding: 12px 0;
+    font-size: 1rem;
+  }
+
+  /* Transaction history links smaller */
+  .history-card a {
+    font-size: 0.75em;
+  }
 }
