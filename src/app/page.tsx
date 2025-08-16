@@ -9,20 +9,16 @@ import { StdFee } from "@cosmjs/amino";
 import ReactModal from "react-modal";
 
 const queryClient = new QueryClient();
-
 const RPC_URL = "https://api.andromedaprotocol.io/rpc/testnet";
 const CHAIN_ID = "galileo-4";
 const DENOM = "uandr";
 const DISPLAY_DENOM = "ANDR";
-
 const PROPMINT_MAIN_CONTRACT = "andr1t6zcfvnr7vwp2dyecgentu649jcaqh6rscp0088275vjr6hygcqsjaz4mq";
 const CW721_PROPERTY_CONTRACT = "andr1mglayf6ncyvawz5x8n0nnv3z7nwv5gw9gs5anzww4tgcckjsg78s35dfj9";
 const CW20_FRACTIONAL_TOKEN = "andr1rmca39jx8dnqh2j26fachgkhzvh2c6r6lmppsj9a2a35p89e2jussakzfw";
 const CW20_EXCHANGE_CONTRACT = "andr1qh9jq0jk835gguu0x4cqxk20pe7z8jcwqerfljjuf5ly99gkeazsph5rnq";
 const CW20_STAKING_CONTRACT = "andr1gk2zfc5xunhs9980ul8vs3xtlcf787yf3ra6ntv4ac8w2rrj06vsaqm43e";
 const TOKEN_ID = "VILLA123";
-
-ReactModal.setAppElement(typeof document !== "undefined" ? document.body : undefined);
 
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string>("");
@@ -34,7 +30,7 @@ export default function Home() {
   const [statusType, setStatusType] = useState<"success" | "error" | "info">("info");
   const [modalMessage, setModalMessage] = useState<string>("");
   const [modalOpen, setModalOpen] = useState<boolean>(false);
-  const [modalAction, setModalAction] = useState<() => Promise<void>>();
+  const [modalAction, setModalAction] = useState<(() => Promise<void>) | undefined>(undefined);
 
   const [loading, setLoading] = useState({
     purchase: false,
@@ -125,7 +121,6 @@ export default function Home() {
       ) || [null, "0"];
       setStakingRewards(Number(rewardEntry[1]) / 1_000_000);
 
-      // Calculate max purchasable assuming exchange rate 1,000,000 (1ANDR per PMT)
       const exchangeRate = 1_000_000;
       const maxBuy = Math.floor((native ? Number(native.amount) : 0) / exchangeRate);
       setMaxPurchasable(maxBuy);
@@ -141,7 +136,7 @@ export default function Home() {
 
   const connectWallet = async () => {
     try {
-      if (!window.keplr) {
+      if (typeof window === "undefined" || !window.keplr) {
         showStatus("🔒 Please install Keplr wallet extension first!", "error");
         return;
       }
@@ -173,6 +168,10 @@ export default function Home() {
         stakeCurrency: { coinDenom: DISPLAY_DENOM, coinMinimalDenom: DENOM, coinDecimals: 6 }
       });
       await window.keplr.enable(CHAIN_ID);
+      if (!window.getOfflineSigner) {
+        showStatus("❌ Keplr is missing getOfflineSigner", "error");
+        return;
+      }
       const offlineSigner: OfflineSigner = window.getOfflineSigner(CHAIN_ID);
       const accounts = await offlineSigner.getAccounts();
       setWalletAddress(accounts[0].address);
@@ -190,6 +189,10 @@ export default function Home() {
     fee: StdFee,
     label: string
   ) => {
+    if (typeof window === "undefined" || !window.getOfflineSigner) {
+      showStatus("Keplr wallet required.", "error");
+      throw new Error("Keplr wallet required.");
+    }
     const offlineSigner = window.getOfflineSigner(CHAIN_ID);
     const client = await SigningCosmWasmClient.connectWithSigner(RPC_URL, offlineSigner);
     const amountMicro = Math.floor(Number(amount) * 1_000_000);
@@ -213,7 +216,6 @@ export default function Home() {
 
   const purchaseFractionalTokens = async () => {
     const amount = Number(purchaseAmount);
-
     if (!walletAddress) {
       showStatus("Connect your wallet first", "error");
       return;
@@ -230,17 +232,14 @@ export default function Home() {
       showStatus(`You can only purchase up to ${maxPurchasable} PMT with your ANDR balance`, "error");
       return;
     }
-
     confirmAndProceed(`Confirm purchase of ${amount} PMT tokens?`, async () => {
       try {
         setLoading(l => ({ ...l, purchase: true }));
-
         const fee: StdFee = { amount: [{ denom: DENOM, amount: "15000" }], gas: "800000" };
         const exchangeRate = 1_000_000; 
         const totalUANDR = (amount * exchangeRate).toString();
-
         const executeMsg = { purchase: { recipient: walletAddress } };
-
+        if (typeof window === "undefined" || !window.getOfflineSigner) throw new Error("Keplr required");
         const client = await SigningCosmWasmClient.connectWithSigner(RPC_URL, window.getOfflineSigner(CHAIN_ID));
         const result = await client.execute(
           walletAddress,
@@ -250,7 +249,6 @@ export default function Home() {
           `Buy ${amount} PMT tokens`,
           [{ denom: DENOM, amount: totalUANDR }]
         );
-
         setTxHistory(prev => [{ action: "Buy", amount: purchaseAmount, tx: result.transactionHash }, ...prev]);
         showStatus(`Purchase successful! TX hash: ${result.transactionHash.substring(0, 16)}...`, "success");
         await fetchBalances();
@@ -275,7 +273,6 @@ export default function Home() {
       showStatus("Insufficient PMT tokens to stake", "error");
       return;
     }
-
     confirmAndProceed(`Confirm staking of ${stakeAmount} PMT tokens?`, async () => {
       try {
         setLoading(l => ({ ...l, stake: true }));
@@ -301,7 +298,6 @@ export default function Home() {
 
   const unstakeTokens = async () => {
     const amount = Number(unstakeAmount);
-
     if (!walletAddress) {
       showStatus("Connect your wallet first", "error");
       return;
@@ -314,22 +310,15 @@ export default function Home() {
       showStatus("Insufficient staked PMT tokens to unstake", "error");
       return;
     }
-
     confirmAndProceed(`Confirm unstaking of ${unstakeAmount} PMT tokens?`, async () => {
       try {
         setLoading(l => ({ ...l, unstake: true }));
-
+        if (typeof window === "undefined" || !window.getOfflineSigner) throw new Error("Keplr required");
         const offlineSigner = window.getOfflineSigner(CHAIN_ID);
         const client = await SigningCosmWasmClient.connectWithSigner(RPC_URL, offlineSigner);
         const amountMicro = Math.floor(amount * 1_000_000).toString();
         const fee: StdFee = { amount: [{ denom: DENOM, amount: "10000" }], gas: "600000" };
-
-        const executeMsg = {
-          unstake_tokens: {
-            amount: amountMicro
-          }
-        };
-
+        const executeMsg = { unstake_tokens: { amount: amountMicro } };
         const result = await client.execute(walletAddress, CW20_STAKING_CONTRACT, executeMsg, fee, `Unstake ${amount} PMT tokens`);
         setTxHistory(prev => [{ action: "Unstake", amount: unstakeAmount, tx: result.transactionHash }, ...prev]);
         showStatus(`Unstaked successfully! TX: ${result.transactionHash.substring(0, 16)}...`, "success");
@@ -344,7 +333,6 @@ export default function Home() {
 
   const sellTokens = async () => {
     const amount = Number(sellAmount);
-
     if (!walletAddress) {
       showStatus("Connect wallet first", "error");
       return;
@@ -357,12 +345,10 @@ export default function Home() {
       showStatus("Insufficient PMT tokens", "error");
       return;
     }
-
     confirmAndProceed(`Confirm listing ${amount} PMT tokens for sale?`, async () => {
       try {
         setLoading(l => ({ ...l, sell: true }));
         const amountMicro = Math.floor(amount * 1e6).toString();
-
         const hookMsg = {
           start_sale: {
             asset: { native: DENOM },
@@ -370,7 +356,6 @@ export default function Home() {
             recipient: walletAddress
           }
         };
-
         const sendMsg = {
           send: {
             contract: CW20_EXCHANGE_CONTRACT,
@@ -378,13 +363,11 @@ export default function Home() {
             msg: btoa(JSON.stringify(hookMsg))
           }
         };
-
+        if (typeof window === "undefined" || !window.getOfflineSigner) throw new Error("Keplr required");
         const offlineSigner = window.getOfflineSigner(CHAIN_ID);
         const client = await SigningCosmWasmClient.connectWithSigner(RPC_URL, offlineSigner);
         const fee: StdFee = { amount: [{ denom: DENOM, amount: "10000" }], gas: "600000" };
-
         const res = await client.execute(walletAddress, CW20_FRACTIONAL_TOKEN, sendMsg, fee, `Start sale of ${amount} PMT`);
-
         setTxHistory(prev => [{ action: "Start Sale", amount, tx: res.transactionHash }, ...prev]);
         showStatus(`Sale started! TX: ${res.transactionHash.substring(0, 16)}...`, "success");
         await fetchBalances();
@@ -401,21 +384,15 @@ export default function Home() {
       showStatus("Connect wallet first", "error");
       return;
     }
-
     confirmAndProceed(`Confirm canceling active sale?`, async () => {
       try {
         setLoading(l => ({ ...l, cancel: true }));
-
-        const cancelMsg = {
-          cancel_sale: { asset: { native: DENOM } }
-        };
-
+        const cancelMsg = { cancel_sale: { asset: { native: DENOM } } };
+        if (typeof window === "undefined" || !window.getOfflineSigner) throw new Error("Keplr required");
         const offlineSigner = window.getOfflineSigner(CHAIN_ID);
         const client = await SigningCosmWasmClient.connectWithSigner(RPC_URL, offlineSigner);
         const fee: StdFee = { amount: [{ denom: DENOM, amount: "10000" }], gas: "600000" };
-
         const res = await client.execute(walletAddress, CW20_EXCHANGE_CONTRACT, cancelMsg, fee, "Cancel sale");
-
         setTxHistory(prev => [{ action: "Cancel Sale", amount: "-", tx: res.transactionHash }, ...prev]);
         showStatus(`Sale cancelled! TX: ${res.transactionHash.substring(0, 16)}…`, "success");
         await fetchBalances();
@@ -461,16 +438,10 @@ export default function Home() {
                 <p style={{ marginTop: "8px", fontSize: "0.9em", color: "#666" }}>Max purchasable with your ANDR: {maxPurchasable} PMT</p>
               </div>
             </div>
-
             {nftInfo && (
               <div className="property-card">
                 <div className="property-title">{nftInfo.extension?.name || "Property NFT"}</div>
-                <img
-                  src={propertyImage}
-                  alt="Property Image"
-                  style={{ width: "100%", borderRadius: 16, marginTop: 12 }}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/default-property.png"; }}
-                />
+                <img src={propertyImage} alt="Property Image" style={{ width: "100%", borderRadius: 16, marginTop: 12 }} onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/default-property.png"; }} />
                 <div className="property-details">
                   <p>{nftInfo.extension?.description}</p>
                   {nftInfo.extension?.attributes?.map((attr: any) => (
@@ -479,75 +450,23 @@ export default function Home() {
                 </div>
               </div>
             )}
-
-            {/* Buy PMT Section */}
             <div className="tx-section">
-              <input
-                type="number"
-                min="0.001"
-                step="0.001"
-                placeholder="Amount to purchase"
-                value={purchaseAmount}
-                onChange={(e) => setPurchaseAmount(e.currentTarget.value)}
-                aria-label="Amount to purchase"
-              />
-              <button className="action-btn" onClick={purchaseFractionalTokens} disabled={loading.purchase}>
-                {loading.purchase ? <>Processing...</> : `Buy ${purchaseAmount} PMT`}
-              </button>
+              <input type="number" min="0.001" step="0.001" placeholder="Amount to purchase" value={purchaseAmount} onChange={e => setPurchaseAmount(e.currentTarget.value)} aria-label="Amount to purchase" />
+              <button className="action-btn" onClick={purchaseFractionalTokens} disabled={loading.purchase}>{loading.purchase ? <>Processing...</> : `Buy ${purchaseAmount} PMT`}</button>
             </div>
-
-            {/* Stake PMT Section */}
             <div className="tx-section">
-              <input
-                type="number"
-                min="0.001"
-                step="0.001"
-                placeholder="Amount to stake"
-                value={stakeAmount}
-                onChange={(e) => setStakeAmount(e.currentTarget.value)}
-                aria-label="Amount to stake"
-              />
-              <button className="action-btn" onClick={stakeTokens} disabled={loading.stake}>
-                {loading.stake ? <>Processing...</> : `Stake ${stakeAmount} PMT`}
-              </button>
+              <input type="number" min="0.001" step="0.001" placeholder="Amount to stake" value={stakeAmount} onChange={e => setStakeAmount(e.currentTarget.value)} aria-label="Amount to stake" />
+              <button className="action-btn" onClick={stakeTokens} disabled={loading.stake}>{loading.stake ? <>Processing...</> : `Stake ${stakeAmount} PMT`}</button>
             </div>
-
-            {/* Unstake PMT Section */}
             <div className="tx-section">
-              <input
-                type="number"
-                min="0.001"
-                step="0.001"
-                placeholder="Amount to unstake"
-                value={unstakeAmount}
-                onChange={(e) => setUnstakeAmount(e.currentTarget.value)}
-                aria-label="Amount to unstake"
-              />
-              <button className="action-btn" onClick={unstakeTokens} disabled={loading.unstake}>
-                {loading.unstake ? <>Processing...</> : `Unstake ${unstakeAmount} PMT`}
-              </button>
+              <input type="number" min="0.001" step="0.001" placeholder="Amount to unstake" value={unstakeAmount} onChange={e => setUnstakeAmount(e.currentTarget.value)} aria-label="Amount to unstake" />
+              <button className="action-btn" onClick={unstakeTokens} disabled={loading.unstake}>{loading.unstake ? <>Processing...</> : `Unstake ${unstakeAmount} PMT`}</button>
             </div>
-
-            {/* Sell PMT Section */}
             <div className="tx-section">
-              <input
-                type="number"
-                min="0.001"
-                step="0.001"
-                placeholder="Amount to sell"
-                value={sellAmount}
-                onChange={(e) => setSellAmount(e.currentTarget.value)}
-                aria-label="Amount to sell"
-              />
-              <button className="action-btn" onClick={sellTokens} disabled={loading.sell}>
-                {loading.sell ? <>Processing...</> : `Sell ${sellAmount} PMT`}
-              </button>
-              <button className="action-btn" style={{ marginLeft: 8, background: "#ff5555" }} onClick={cancelSale} disabled={loading.cancel}>
-                {loading.cancel ? "Cancelling..." : "Cancel Sale"}
-              </button>
+              <input type="number" min="0.001" step="0.001" placeholder="Amount to sell" value={sellAmount} onChange={e => setSellAmount(e.currentTarget.value)} aria-label="Amount to sell" />
+              <button className="action-btn" onClick={sellTokens} disabled={loading.sell}>{loading.sell ? <>Processing...</> : `Sell ${sellAmount} PMT`}</button>
+              <button className="action-btn" style={{ marginLeft: 8, background: "#ff5555" }} onClick={cancelSale} disabled={loading.cancel}>{loading.cancel ? "Cancelling..." : "Cancel Sale"}</button>
             </div>
-
-            {/* Transaction History Section */}
             <div className="history-card">
               <div className="balance-title">Transaction History</div>
               <div className="balance-details">
@@ -557,7 +476,7 @@ export default function Home() {
                       <strong>{tx.action}:</strong> {tx.amount} PMT
                       <br />
                       <a
-                         href={`https://explorer.testnet.andromedaprotocol.io/galileo-4/tx/${tx.tx}`}
+                        href={`https://explorer.testnet.andromedaprotocol.io/galileo-4/tx/${tx.tx}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ fontSize: "0.8em", color: "#007aff", textDecoration: "underline" }}
@@ -571,19 +490,16 @@ export default function Home() {
                 )}
               </div>
             </div>
-
             <button className="disconnect-btn" onClick={disconnectWallet}>
               Disconnect Wallet
             </button>
           </div>
         )}
-
         {status && (
           <div className={`status ${statusType}`} role="alert" aria-live="assertive" aria-atomic="true">
             {status}
           </div>
         )}
-
         <ReactModal
           isOpen={modalOpen}
           onRequestClose={closeModal}
@@ -591,7 +507,7 @@ export default function Home() {
           className="modal"
           overlayClassName="modal-overlay"
           shouldCloseOnOverlayClick={true}
-          ariaHideApp={false} // Avoid warning, adjust if you set appElement properly
+          ariaHideApp={false}
         >
           <div className="modal-content">
             <p>{modalMessage}</p>
